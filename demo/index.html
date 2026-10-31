@@ -69,7 +69,7 @@
         <table>
           <thead><tr>
             <th>Name</th><th>ID</th><th>Model</th><th>Pricing</th><th>Est. cost/turn</th>
-            <th>Conv. length</th><th>Last 1h</th><th>Last 24h</th><th>Auto %</th><th>Open for</th><th>Last active</th>
+            <th>Conv. length</th><th>Last 1h</th><th>Last 6h</th><th>Last 24h</th><th>Auto %</th><th>Open for</th><th>Last active</th>
           </tr></thead>
           <tbody id="open-body"></tbody>
         </table>
@@ -119,22 +119,47 @@
       legend.appendChild(div);
     });
 
-    var ROWS = [
-      { name: "Agent-A", id: "a1b2c3d4", model: "Sonnet 5", pricing: "in $2／out $10", cost: "$0.03",
-        len: "182K", h1: "4.2K", h24: "61K", auto: "18%", open: "6 小時 12 分", last: "2 分前" },
-      { name: "Agent-B", id: "e5f6a7b8", model: "Opus 5.5", pricing: "in $4／out $20", cost: "$0.42", costRed: true,
-        len: "512K", h1: "12K", h24: "203K", auto: "41%", open: "1 天 2 小時", last: "剛剛" },
-      { name: "舊Agent-C", id: "9c0d1e2f", model: "Sonnet 5", pricing: "in $2／out $10", cost: "$0.01",
-        len: "22K", h1: "0", h24: "3K", auto: "5%", open: "22 分", last: "19 分前" },
+    // Fake data only, ~18 rows so the table looks like a busy real session
+    // without ever being a real one. Numbers deliberately span low to high
+    // so some rows legitimately cross the red thresholds.
+    var NAMES = ["剪輯助手", "審核", "翻譯", "校對", "排程", "構建", "部署", "監控",
+                 "巡檢", "統計", "歸檔", "簽核", "Agent-13", "Agent-14", "回收",
+                 "清理", "彙總", "測試"];
+    var MODELS = [
+      { model: "Sonnet 5", pricing: "in $2／out $10" },
+      { model: "Opus 5.5", pricing: "in $4／out $20" },
     ];
+    var ROWS = NAMES.map(function (name, i) {
+      var m = MODELS[i % 2];
+      var costVal = [0.01, 0.02, 0.03, 0.05, 0.08, 0.11, 0.15, 0.19, 0.22,
+                     0.27, 0.31, 0.38, 0.42, 0.55, 0.61, 0.74, 0.9, 1.1][i];
+      var lenK = [8, 15, 22, 34, 48, 61, 79, 95, 110, 140, 165, 190, 230,
+                  280, 330, 390, 450, 520][i];
+      return {
+        name: (i === 14 ? "舊" : "") + name,
+        id: (100000 + i * 7919).toString(16).padStart(8, "0"),
+        model: m.model, pricing: m.pricing,
+        cost: "$" + costVal.toFixed(2), costRed: costVal > 0.2,
+        len: lenK + "K", lenRed: lenK > 200,
+        h1: (lenK * 7 % 40) + "0", h6: (lenK * 13 % 90 + 10) + "00", h24: (lenK * 31 % 900 + 100) + "00",
+        auto: (8 + (i * 5) % 50) + "%", autoRed: (8 + (i * 5) % 50) > 30,
+        open: i % 3 === 0 ? (1 + i % 4) + " 天 " + (i % 12) + " 小時" : (i % 12 + 1) + " 小時 " + (i * 3 % 60) + " 分",
+        openRed: i % 3 === 0 && (1 + i % 4) >= 3,
+        last: i % 5 === 0 ? (25 + i) + " 小時前" : (i * 2 + 1) + " 分前",
+        lastRed: i % 5 === 0 && (25 + i) > 24,
+      };
+    });
     var body = document.getElementById("open-body");
     ROWS.forEach(function (r) {
       var tr = document.createElement("tr");
       tr.innerHTML =
         "<td>" + r.name + "</td><td>" + r.id + "</td><td>" + r.model + "</td><td>" + r.pricing + "</td>" +
         '<td class="' + (r.costRed ? "red" : "") + '">' + r.cost + "</td>" +
-        "<td>" + r.len + "</td><td>" + r.h1 + "</td><td>" + r.h24 + "</td>" +
-        "<td>" + r.auto + "</td><td>" + r.open + "</td><td>" + r.last + "</td>";
+        '<td class="' + (r.lenRed ? "red" : "") + '">' + r.len + "</td>" +
+        "<td>" + r.h1 + "</td><td>" + r.h6 + "</td><td>" + r.h24 + "</td>" +
+        '<td class="' + (r.autoRed ? "red" : "") + '">' + r.auto + "</td>" +
+        '<td class="' + (r.openRed ? "red" : "") + '">' + r.open + "</td>" +
+        '<td class="' + (r.lastRed ? "red" : "") + '">' + r.last + "</td>";
       body.appendChild(tr);
     });
   </script>
