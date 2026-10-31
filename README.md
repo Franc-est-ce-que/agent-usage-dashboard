@@ -2,7 +2,9 @@
 
 🔗 [Live demo / 線上示範](https://franc-est-ce-que.github.io/agent-usage-dashboard/demo/)
 
-[English](#agent-usage-dashboard) | 简体中文（Simplified Chinese 版本待定案，之後補上）
+[English](#agent-usage-dashboard) | [繁體中文](#繁體中文) | [简体中文](#简体中文)
+
+Based on [claude-usage](https://github.com/phuryn/claude-usage) (by Pawel Huryn, MIT license), modified.
 
 A local web dashboard that watches Claude Code's own usage logs
 (`~/.claude/projects/**/*.jsonl`) and turns them into: which windows are
@@ -108,16 +110,40 @@ code, MIT-licensed (see `LICENSE`).
 
 ---
 
-## 繁體中文簡介
+## 繁體中文
 
-這是一個看 Claude Code 自己寫在本機的用量 log（`~/.claude/projects` 底下的
-jsonl 檔）、整理成一個網頁的小工具：現在開著哪些視窗、每個視窗花了多少
-token、大概多少錢、過去 24 小時的折線圖與各視窗佔比圓餅圖。全部都在你自己
-的電腦上跑，只讀 Claude Code 本來就會寫在本機的 log 檔，不會讀你實際打的
-內容，也不會把任何東西傳到別的地方。
+本專案基於 [claude-usage](https://github.com/phuryn/claude-usage)（作者 Pawel Huryn，MIT 授權）修改。
 
-核心的「讀 jsonl、算 token」邏輯借用了開源專案
-[claude-usage](https://github.com/phuryn/claude-usage)（細節見上面「Credit」），
-我們在它上面加了：認出哪個視窗對到哪個 Claude 行程、簡單的計價表、24 小時
-圖表。頁面右側還有一個「跟助理聊天」小面板，純粹是寫讀一個文字檔，要接什麼
-樣的機器人或 AI 都可以自己接。
+亮點：AI 助手是照用量收費的，這張表讓你一眼看出誰在偷偷花你的錢。
+
+它解決什麼問題：
+AI 助手每回一句話都要錢，對話越長，每句越貴。開了很多個之後，你很難知道是哪一個在花錢、花了多少；有的助手你早就沒在用，它卻還開著，一直在花。常常到月底看帳單才嚇一跳。
+
+它做什麼：
+1 一張表列出每一個助手：用的是哪個模型、問一次大概多少錢、對話已經多長。
+2 看得到最近 1 小時、6 小時、24 小時各用了多少，哪段時間花最兇一清二楚。
+3 花太多、對話太長、或開很久都沒動的，會用紅字標出來，提醒你該關掉或重開。
+4 會分辨「你親手問的」和「助手自己跑的」各占多少，知道錢是不是花在你要的事上。
+5 數字用 K、M 縮寫，看得懂；會跟著電腦的深色或淺色模式換顏色。
+6 旁邊有對話框，可以直接問「為什麼這個這麼貴？」
+適合誰：每個月 AI 帳單不便宜、想知道錢花去哪裡的人。
+
+---
+
+## 简体中文
+
+本项目基于 [claude-usage](https://github.com/phuryn/claude-usage)（作者 Pawel Huryn，MIT 授权）修改。
+
+亮点：AI 助手是照用量收费的，这张表让你一眼看出谁在偷偷花你的钱。
+
+它解决什么问题：
+AI 助手每回一句话都要钱，对话越长，每句越贵。开了很多个之后，你很难知道是哪一个在花钱、花了多少；有的助手你早就没在用，它却还开著，一直在花。常常到月底看帐单才吓一跳。
+
+它做什么：
+1 一张表列出每一个助手：用的是哪个模型、问一次大概多少钱、对话已经多长。
+2 看得到最近 1 小时、6 小时、24 小时各用了多少，哪段时间花最凶一清二楚。
+3 花太多、对话太长、或开很久都没动的，会用红字标出来，提醒你该关掉或重开。
+4 会分辨「你亲手问的」和「助手自己跑的」各占多少，知道钱是不是花在你要的事上。
+5 数字用 K、M 缩写，看得懂；会跟著电脑的深色或浅色模式换颜色。
+6 旁边有对话框，可以直接问「为什么这个这么贵？」
+适合谁：每个月 AI 帐单不便宜、想知道钱花去哪里的人。
