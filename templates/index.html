@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>Agent 用量</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  html, body { margin: 0; }
+  body { font-family: -apple-system, "PingFang TC", sans-serif; background: #fafafa; color: #222; }
+  h1 { font-size: 20px; }
+  .meta { color: #777; font-size: 13px; margin-bottom: 12px; }
+  table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 13px; background: #fff; }
+  th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; white-space: nowrap; }
+  th { background: #f0f0f0; position: sticky; top: 0; }
+  tr:hover { background: #f5f8ff; }
+  .red { color: #c0392b; font-weight: 600; }
+  .section { margin-top: 28px; }
+  .small { color: #999; font-size: 12px; }
+  /* 102802 第三輪使用者定：對話框固定在螢幕右邊、全高、永遠不蓋到表格；
+     左邊表格區留出對話框寬度，表格太寬就在表格區自己左右拉動。 */
+  .page { padding: 20px; padding-right: 360px; box-sizing: border-box; }
+  .table-scroll { overflow-x: auto; }
+  .layout-right {
+    position: fixed; top: 0; right: 0; width: 340px; height: 100vh;
+    overflow-y: auto; border-left: 1px solid #ddd; background: #fff;
+    padding: 16px; box-sizing: border-box; z-index: 10;
+    display: flex; flex-direction: column;
+  }
+  .layout-right .chat-body { flex: 1; max-height: none; min-height: 0; }
+  @media (max-width: 900px) {
+    .page { padding-right: 20px; }
+    .layout-right {
+      position: static; width: 100%; height: auto;
+      border-left: none; border-top: 1px solid #ddd; margin-top: 20px;
+    }
+  }
+  .chat-body { max-height: 320px; overflow-y: auto; background: #fff; border: 1px solid #ddd; padding: 10px; margin-bottom: 8px; }
+  .chat-msg { max-width: 86%; margin: 0 0 8px; padding: 6px 10px; border-radius: 10px; background: #eef1f7; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .chat-msg.me { margin-left: auto; background: #dbe9ff; }
+  .chat-who { font-size: 11px; color: #999; margin: 0 0 2px; }
+  .chat-msg.me .chat-who { text-align: right; }
+  .chat-hint, .chat-wait, .chat-err { font-size: 12px; color: #999; margin: 0 0 8px; }
+  .chat-err { color: #c0392b; }
+  .chat-foot { display: flex; gap: 8px; align-items: flex-end; }
+  .chat-foot textarea { flex: 1; resize: none; font: inherit; font-size: 13px; padding: 8px; border: 1px solid #ddd; border-radius: 8px; min-height: 40px; max-height: 160px; box-sizing: border-box; }
+  .chat-foot button { background: #3a6df0; color: #fff; border: 0; border-radius: 8px; padding: 0 16px; height: 40px; font: inherit; font-size: 13px; cursor: pointer; }
+  .chat-foot button:disabled { opacity: .5; cursor: default; }
+  /* 102802 第四輪：兩張圖放表格上方、左邊表格區內，不蓋對話框。 */
+  .charts-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: stretch; }
+  .chart-box { background: #fff; border: 1px solid #ddd; padding: 12px; box-sizing: border-box; }
+  .chart-box-line { flex: 2 1 480px; }
+  .chart-box-pie { flex: 1 1 320px; }
+  .chart-box canvas { max-width: 100%; }
+  /* 2026-10-30 他要「随系统模式调整颜色」：系統是深色就換深色 */
+  @media (prefers-color-scheme: dark) {
+    body { background: #1c1c1e; color: #e5e5e7; }
+    .meta, .small, .chat-who, .chat-hint, .chat-wait { color: #9a9aa0; }
+    table, .chat-body, .layout-right, .chart-box { background: #2c2c2e; border-color: #3a3a3c; }
+    th { background: #3a3a3c; }
+    td, th { border-color: #3a3a3c; }
+    tr:hover { background: #33384a; }
+    .red { color: #ff6b5e; }
+    .chat-msg { background: #3a3a3c; color: #e5e5e7; }
+    .chat-msg.me { background: #2b4a7a; }
+    .chat-foot textarea { background: #1c1c1e; color: #e5e5e7; border-color: #3a3a3c; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <h1>Agent 用量</h1>
+    <div class="meta" id="meta">載入中…</div>
+
+    <div class="section">
+      <h2>過去 24 小時</h2>
+      <div class="charts-row">
+        <div class="chart-box chart-box-line"><canvas id="hourlyChart" height="220"></canvas></div>
+        <div class="chart-box chart-box-pie"><canvas id="pieChart" height="220"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>現在開著的視窗</h2>
+      <div class="table-scroll">
+        <table id="open-table">
+          <thead>
+            <tr>
+              <th>名字</th><th>編號</th><th>模型</th><th>收費方式</th><th>問一次約多少錢</th>
+              <th>對話長度(token)</th><th>近1小時</th><th>近6小時</th><th>近24小時</th>
+              <th>近24小時其中分身花的</th><th>開窗以來</th><th>開窗以來其中分身花的</th>
+              <th>自動佔比(近24小時)</th><th>被什麼叫醒最多(近24小時)</th>
+              <th>開了多久</th><th>最後一次動(本地時間)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>認不出是誰</h2>
+      <div class="table-scroll">
+        <table id="unknown-table">
+          <thead><tr><th>pid</th><th>tty</th><th>開了多久(秒)</th><th>備註</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>背景程式（不是視窗）</h2>
+      <div class="table-scroll">
+        <table id="bg-table">
+          <thead><tr><th>第一則訊息分類</th><th>近1小時 session數/token</th><th>近6小時 session數/token</th><th>近24小時 session數/token</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout-right">
+    <h2 style="margin-top:0;">跟助理聊天</h2>
+    <div class="chat-body" id="chatBody"><div class="chat-hint" id="chatHint">還沒有訊息。打一句話送出，助理就收到。</div></div>
+    <div class="chat-foot">
+      <textarea id="chatInp" rows="2" maxlength="2000" placeholder="輸入訊息…（Enter 送出、Shift+Enter 換行）"></textarea>
+      <button type="button" id="chatSend">送出</button>
+    </div>
+  </div>
+
+<script>
+function esc(s) { return (s === null || s === undefined) ? "" : String(s); }
+function fmtNum(n) {
+  if (n === null || n === undefined) return "";
+  n = Number(n); const a = Math.abs(n);
+  if (a >= 1e6) return (n / 1e6).toFixed(2) + "M";
+  if (a >= 1e3) return (n / 1e3).toFixed(2) + "K";
+  return n.toFixed(2);
+}
+function fmtCount(n) { return (n === null || n === undefined) ? "" : Number(n).toLocaleString("en-US"); }
+
+// 102802 第四輪：過去 24 小時折線（長條）＋圓餅。圖表實例只建一次，之後用 .update()
+// 換資料，不要每 60 秒重建 canvas（design-principles.md 第 2 條：快取要綁住來源版本，
+// 這裡等於「同一顆圖只能有一個活著的 Chart 實例」）。
+var hourlyChartInst = null, pieChartInst = null;
+var PIE_COLORS = ["#3a6df0", "#e67e22", "#2ecc71", "#9b59b6", "#e74c3c", "#1abc9c", "#f1c40f", "#34495e", "#95a5a6", "#16a085"];
+
+function renderCharts(data) {
+  const hourly = data.hourly_tokens || [];
+  const labels = hourly.map(h => h.hour_local.slice(11, 16));
+  const values = hourly.map(h => h.tokens);
+  const ctx1 = document.getElementById("hourlyChart");
+  if (ctx1 && window.Chart) {
+    if (!hourlyChartInst) {
+      hourlyChartInst = new Chart(ctx1, {
+        type: "bar",
+        data: { labels: labels, datasets: [{ label: "每小時 token", data: values, backgroundColor: "#3a6df0" }] },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false }, title: { display: true, text: "過去 24 小時 token（本地時間）" } },
+          scales: { y: { ticks: { callback: v => fmtNum(v) } } }
+        }
+      });
+    } else {
+      hourlyChartInst.data.labels = labels;
+      hourlyChartInst.data.datasets[0].data = values;
+      hourlyChartInst.update();
+    }
+  }
+
+  const pie = data.agent_pie || [];
+  const pLabels = pie.map(p => p["名字"] + "（" + Number(p.pct).toFixed(2) + "%）");
+  const pValues = pie.map(p => p.tokens);
+  const ctx2 = document.getElementById("pieChart");
+  if (ctx2 && window.Chart) {
+    if (!pieChartInst) {
+      pieChartInst = new Chart(ctx2, {
+        type: "pie",
+        data: { labels: pLabels, datasets: [{ data: pValues, backgroundColor: PIE_COLORS }] },
+        options: { responsive: true, plugins: { title: { display: true, text: "過去 24 小時各 Agent 佔比" } } }
+      });
+    } else {
+      pieChartInst.data.labels = pLabels;
+      pieChartInst.data.datasets[0].data = pValues;
+      pieChartInst.update();
+    }
+  }
+}
+
+function render(data) {
+  document.getElementById("meta").textContent =
+    "更新於 " + data.generated_at + "　ps 偵測到視窗數：" + data.ps_window_count +
+    "　對到 session：" + data.matched_count + "　認不出：" + data.unknown_count;
+
+  renderCharts(data);
+
+  // 102802 第三輪：標紅門檻只跟伺服器拿一次，不在前端重複定義數字。
+  const th = data.red_thresholds || {};
+
+  const ob = document.querySelector("#open-table tbody");
+  ob.innerHTML = "";
+  data.open_windows.forEach(r => {
+    const costVal = r["問一次約多少錢_USD"];
+    const cost = costVal === null ? r["問一次約多少錢_備註"] : ("$" + costVal.toFixed(2));
+    const costRed = costVal !== null && costVal > th.cost_usd;
+    const convLen = r["對話長度_tokens"];
+    const convRed = convLen > th.conv_len;
+    const autoRatio = r["自動佔比_近24小時"];
+    const autoRed = autoRatio > th.auto_ratio_pct;
+    const openSec = r["開了多久_秒"];
+    const openRed = (openSec || 0) > th.open_hours * 3600;
+    const lastAgeSec = r["最後一次動_距今秒"];
+    const lastRed = lastAgeSec !== null && lastAgeSec !== undefined && lastAgeSec > th.last_action_hours * 3600;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${esc(r["名字"])}</td><td>${esc(r["編號"])}</td><td>${esc(r["模型"])}</td>` +
+      `<td>${esc(r["收費方式"])}</td><td class="${costRed ? 'red' : ''}">${esc(cost)}</td>` +
+      `<td class="${convRed ? 'red' : ''}">${fmtNum(convLen)}</td>` +
+      `<td>${fmtNum(r["近1小時總token"])}</td><td>${fmtNum(r["近6小時總token"])}</td><td>${fmtNum(r["近24小時總token"])}</td>` +
+      `<td>${fmtNum(r["近24小時其中分身花的token"])}</td>` +
+      `<td>${fmtNum(r["開窗以來總token"])}</td><td>${fmtNum(r["開窗以來其中分身花的token"])}</td>` +
+      `<td class="${autoRed ? 'red' : ''}">${autoRatio==null?"":Number(autoRatio).toFixed(2)}%</td><td>${esc(r["被什麼叫醒最多_近24小時"])}</td>` +
+      `<td class="${openRed ? 'red' : ''}">${esc(r["開了多久"])}</td>` +
+      `<td class="${lastRed ? 'red' : ''}">${esc(r["最後一次動_本地時間"])}</td>`;
+    ob.appendChild(tr);
+  });
+
+  const ub = document.querySelector("#unknown-table tbody");
+  ub.innerHTML = "";
+  data.unknown_windows.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${esc(r.pid)}</td><td>${esc(r.tty)}</td><td>${esc(r.elapsed_s)}</td><td>${esc(r.note)}</td>`;
+    ub.appendChild(tr);
+  });
+
+  const bb = document.querySelector("#bg-table tbody");
+  bb.innerHTML = "";
+  data.background.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${esc(r.bucket)}</td>` +
+      `<td>${fmtCount(r.sessions_1h || 0)} / ${fmtNum(r.tokens_1h || 0)}</td>` +
+      `<td>${fmtCount(r.sessions_6h || 0)} / ${fmtNum(r.tokens_6h || 0)}</td>` +
+      `<td>${fmtCount(r.sessions_24h || 0)} / ${fmtNum(r.tokens_24h || 0)}</td>`;
+    bb.appendChild(tr);
+  });
+}
+
+function load() {
+  fetch("/api/data").then(r => r.json()).then(render).catch(e => {
+    document.getElementById("meta").textContent = "讀取失敗：" + e;
+  });
+}
+load();
+setInterval(load, 60000);
+
+// ── 跟助理聊天（輪詢＋頁面可見性心跳）
+var CHAT_POLL_MS = 2000, CHAT_STICK_PX = 40;
+var CS = {msgs: [], sig: '', sending: false, err: '', stick: true};
+
+function chatEsc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function chatStick(){
+  var b = document.getElementById('chatBody');
+  if (CS.stick && b.clientHeight > 0) b.scrollTop = b.scrollHeight;
+}
+function chatRender(){
+  var last = CS.msgs[CS.msgs.length - 1];
+  var html = CS.msgs.length ? '' : '<div class="chat-hint">還沒有訊息。打一句話送出，助理就收到。</div>';
+  html += CS.msgs.map(function(m){
+    return '<div class="chat-msg' + (m.me ? ' me' : '') + '"><div class="chat-who">' +
+      (m.me ? '你' : '助理') + (m.t ? ' · ' + chatEsc(m.t).slice(11) : '') + '</div>' + chatEsc(m.text) + '</div>';
+  }).join('');
+  if (CS.sending) html += '<div class="chat-wait">送出中…</div>';
+  else if (last && last.me) html += '<div class="chat-wait">已送出，等助理回覆…</div>';
+  if (CS.err) html += '<div class="chat-err">' + chatEsc(CS.err) + '</div>';
+  var b = document.getElementById('chatBody');
+  if (b.dataset.html !== html){ b.innerHTML = html; b.dataset.html = html; }
+  chatStick();
+  document.getElementById('chatInp').disabled = CS.sending;
+  document.getElementById('chatSend').disabled = CS.sending;
+}
+document.getElementById('chatBody').addEventListener('scroll', function(e){
+  var b = e.target;
+  if (b.clientHeight > 0) CS.stick = b.scrollHeight - b.scrollTop - b.clientHeight < CHAT_STICK_PX;
+});
+async function chatApi(method, url, body){
+  try {
+    var o = {method: method, credentials: 'same-origin'};
+    if (body){ o.headers = {'Content-Type': 'application/json'}; o.body = JSON.stringify(body); }
+    var r = await fetch(url, o);
+    return await r.json();
+  } catch (e){ return {ok: false, msg: '連不上伺服器'}; }
+}
+function chatTake(msgs){
+  var sig = msgs.length ? msgs.length + ':' + msgs[msgs.length - 1].n : '0';
+  if (sig === CS.sig) return false;
+  CS.msgs = msgs; CS.sig = sig; return true;
+}
+async function chatPoll(){
+  var r = await chatApi('GET', '/api/chat?hidden=' + (document.hidden ? 1 : 0));
+  if (r.ok && chatTake(r.msgs)) chatRender();
+}
+async function chatSendMsg(){
+  var inp = document.getElementById('chatInp'), text = inp.value;
+  if (!text.trim() || CS.sending) return;
+  CS.sending = true; CS.err = ''; CS.stick = true; chatRender();
+  var r = await chatApi('POST', '/api/chat', {text: text});
+  CS.sending = false;
+  if (r.ok){ inp.value = ''; chatTake(r.msgs); }
+  else { CS.err = r.msg || '送出失敗'; }
+  chatRender();
+}
+document.getElementById('chatSend').addEventListener('click', chatSendMsg);
+(function(){
+  var el = document.getElementById('chatInp');
+  var composing = false, endAt = 0, IME_GRACE_MS = 200;
+  el.addEventListener('compositionstart', function(){ composing = true; });
+  el.addEventListener('compositionend', function(){ composing = false; endAt = Date.now(); });
+  el.addEventListener('keydown', function(e){
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    if (e.isComposing || e.keyCode === 229 || composing) return;
+    if (Date.now() - endAt < IME_GRACE_MS) return;
+    e.preventDefault(); chatSendMsg();
+  });
+})();
+document.addEventListener('visibilitychange', chatPoll);
+chatRender();
+chatPoll();
+setInterval(chatPoll, CHAT_POLL_MS);
+</script>
+</body>
+</html>

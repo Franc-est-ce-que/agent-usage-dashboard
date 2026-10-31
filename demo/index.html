@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agent-usage-dashboard — demo</title>
+<style>
+  :root {
+    --bg: #fafafa; --panel: #fff; --border: #ddd; --text: #222; --muted: #888;
+    --red: #c0392b; --accent: #3a6df0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e; --panel: #2c2c2e; --border: #3a3a3c; --text: #e5e5e7;
+      --muted: #9a9aa0; --red: #ff6b5e; --accent: #5b8cff;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font-family: -apple-system, "PingFang TC", sans-serif; background: var(--bg); color: var(--text); }
+  .banner { background: #ffcc00; color: #222; font-size: 12px; text-align: center; padding: 4px 8px; }
+  .page { padding: 20px; max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .meta { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+  .section { margin-top: 26px; }
+  .section h2 { font-size: 15px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; background: var(--panel); }
+  th, td { border: 1px solid var(--border); padding: 5px 8px; text-align: left; white-space: nowrap; }
+  th { background: rgba(127,127,127,.08); }
+  tr:hover { background: rgba(58,109,240,.06); }
+  .red { color: var(--red); font-weight: 600; }
+  .table-scroll { overflow-x: auto; }
+  .charts-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .chart-box { background: var(--panel); border: 1px solid var(--border); padding: 12px; flex: 1 1 320px; }
+  .bars { display: flex; align-items: flex-end; gap: 3px; height: 140px; }
+  .bars div { flex: 1; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 2px; }
+  .pie-legend { font-size: 12px; margin-top: 10px; }
+  .pie-legend span { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .chat { position: fixed; top: 0; right: 0; width: 280px; height: 100vh; background: var(--panel); border-left: 1px solid var(--border); padding: 14px; }
+  .chat h2 { margin-top: 0; font-size: 14px; }
+  .bubble { background: rgba(127,127,127,.12); border-radius: 10px; padding: 6px 10px; font-size: 12.5px; margin-bottom: 8px; }
+  .bubble.me { background: rgba(58,109,240,.15); margin-left: 30px; }
+  @media (max-width: 900px) { .chat { position: static; width: 100%; height: auto; } }
+</style>
+</head>
+<body>
+  <div class="banner">DEMO — fake data only, no network calls, not the real app</div>
+  <div class="page" style="padding-right: 300px;">
+    <h1>Agent Usage</h1>
+    <div class="meta">updated 2026-01-01 00:00 UTC · windows detected by ps: 4 · matched to a session: 3 · unidentified: 1</div>
+
+    <div class="section">
+      <h2>Past 24 hours</h2>
+      <div class="charts-row">
+        <div class="chart-box">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Tokens per hour</div>
+          <div class="bars" id="bars"></div>
+        </div>
+        <div class="chart-box">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Share by agent</div>
+          <div class="pie-legend" id="legend"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Open windows</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Name</th><th>ID</th><th>Model</th><th>Pricing</th><th>Est. cost/turn</th>
+            <th>Conv. length</th><th>Last 1h</th><th>Last 24h</th><th>Auto %</th><th>Open for</th><th>Last active</th>
+          </tr></thead>
+          <tbody id="open-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Unidentified</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>pid</th><th>tty</th><th>open for (s)</th><th>note</th></tr></thead>
+          <tbody>
+            <tr><td>51234</td><td>ttys004</td><td>612</td><td>ps sees this window but it doesn't match any session file</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat">
+    <h2>Chat with assistant</h2>
+    <div class="bubble me">how much did Agent-B spend today?</div>
+    <div class="bubble">About $0.42 so far, mostly Sonnet 5 turns. Want the breakdown by hour?</div>
+  </div>
+
+  <script>
+    // Fake data only. No network calls, nothing read from disk.
+    var HOURLY = [2,1,0,0,0,1,4,8,14,20,26,31,24,19,22,28,33,30,21,15,11,9,6,3];
+    var bars = document.getElementById("bars");
+    var max = Math.max.apply(null, HOURLY);
+    HOURLY.forEach(function (v) {
+      var d = document.createElement("div");
+      d.style.height = Math.max(2, (v / max) * 140) + "px";
+      bars.appendChild(d);
+    });
+
+    var PIE = [
+      { name: "Agent-A", pct: 46, color: "#3a6df0" },
+      { name: "Agent-B", pct: 31, color: "#e67e22" },
+      { name: "Agent-C", pct: 14, color: "#2ecc71" },
+      { name: "background", pct: 9, color: "#95a5a6" },
+    ];
+    var legend = document.getElementById("legend");
+    PIE.forEach(function (p) {
+      var div = document.createElement("div");
+      div.innerHTML = '<span style="background:' + p.color + '"></span>' + p.name + " — " + p.pct + "%";
+      legend.appendChild(div);
+    });
+
+    var ROWS = [
+      { name: "Agent-A", id: "a1b2c3d4", model: "Sonnet 5", pricing: "in $2／out $10", cost: "$0.03",
+        len: "182K", h1: "4.2K", h24: "61K", auto: "18%", open: "6 小時 12 分", last: "2 分前" },
+      { name: "Agent-B", id: "e5f6a7b8", model: "Opus 5.5", pricing: "in $4／out $20", cost: "$0.42", costRed: true,
+        len: "512K", h1: "12K", h24: "203K", auto: "41%", open: "1 天 2 小時", last: "剛剛" },
+      { name: "舊Agent-C", id: "9c0d1e2f", model: "Sonnet 5", pricing: "in $2／out $10", cost: "$0.01",
+        len: "22K", h1: "0", h24: "3K", auto: "5%", open: "22 分", last: "19 分前" },
+    ];
+    var body = document.getElementById("open-body");
+    ROWS.forEach(function (r) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td>" + r.name + "</td><td>" + r.id + "</td><td>" + r.model + "</td><td>" + r.pricing + "</td>" +
+        '<td class="' + (r.costRed ? "red" : "") + '">' + r.cost + "</td>" +
+        "<td>" + r.len + "</td><td>" + r.h1 + "</td><td>" + r.h24 + "</td>" +
+        "<td>" + r.auto + "</td><td>" + r.open + "</td><td>" + r.last + "</td>";
+      body.appendChild(tr);
+    });
+  </script>
+</body>
+</html>

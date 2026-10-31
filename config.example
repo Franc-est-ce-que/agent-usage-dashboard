@@ -1,0 +1,35 @@
+# Copy this file to `.env` (or export these as real environment variables)
+# and fill in your own values. Nothing in this repo reads this file
+# directly by name — it's just a checklist of every environment variable
+# the code looks at. Everything below is optional; the dashboard runs
+# fine with none of these set.
+
+# Which folder of Claude Code jsonl logs to scan.
+# Default if unset: ~/.claude/projects
+AGENT_USAGE_PROJECTS_DIR=
+
+# Timezone offset (hours from UTC, can be negative or fractional, e.g.
+# -5 or 5.5) used to display the hourly chart and the "last active"
+# column. Default if unset: 0 (UTC).
+AGENT_USAGE_UTC_OFFSET_HOURS=0
+
+# Optional, pluggable: path to a script that prints lines like
+# "<name>：...（<8-hex session id>，...報到）", used to label an open window
+# with a name you chose instead of its raw session id. Leave unset and
+# every window just shows its session id (off by default).
+AGENT_USAGE_LINE_NAMES_CMD=
+
+# --- "chat with assistant" side panel ---------------------------------
+
+# Display name for the assistant side of the chat (also used as the
+# desktop-notification title). Default if unset: 助理 ("assistant").
+USAGE_CHAT_LINE=
+
+# Where the chat log is read/written. Default if unset:
+# 對話_<USAGE_CHAT_LINE>.jsonl next to app.py.
+USAGE_CHAT_PATH=
+
+# Test/integration hook: a command to run instead of macOS's osascript
+# when a reply should trigger a desktop notification. Receives (title,
+# body) as argv[1]/argv[2]. Leave unset to use osascript (macOS only).
+USAGE_CHAT_NOTIFY_CMD=
